@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+    <!-- Blue arrow: over the top, sweeping right (mail going out) -->
+    <path d="M15 27 A19 19 0 0 1 44 12" stroke="#2f6bff" stroke-width="6" stroke-linecap="round" />
+    <path d="M37 7 L46 13 L38 20" stroke="#2f6bff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- Red arrow: under the bottom, sweeping left (reply coming back in) -->
+    <path d="M49 37 A19 19 0 0 1 20 52" stroke="#f4634f" stroke-width="6" stroke-linecap="round" />
+    <path d="M27 46 L18 52 L26 59" stroke="#f4634f" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- Envelope, drawn last so the arrows wrap behind it -->
+    <rect x="17" y="21" width="30" height="22" rx="4.5" fill="#f5f2ea" stroke="#1c2230" stroke-width="4" />
+    <path d="M19.5 24 L32 33 L44.5 24" stroke="#1c2230" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

@@ -1,0 +1,53 @@
+{
+  "name": "postloop",
+  "version": "0.0.1",
+  "description": "A local two-way mail dev tool: catches your app's outbound email over SMTP and lets you reply back into it.",
+  "license": "MIT",
+  "author": "Giles Williams",
+  "type": "commonjs",
+  "packageManager": "pnpm@11.18.0",
+  "bin": {
+    "postloop": "bin/postloop.js"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "pnpm run build:web && pnpm run build:server",
+    "build:web": "vite build",
+    "build:server": "tsc -p tsconfig.server.json",
+    "dev": "pnpm run build:web && concurrently -k -n web,server \"vite build --watch\" \"tsx watch src/server/index.ts\"",
+    "start": "node dist/server/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit"
+  },
+  "dependencies": {
+    "@fastify/multipart": "^10.1.1",
+    "@fastify/static": "^10.1.3",
+    "@tiptap/extension-placeholder": "^3.31.3",
+    "fastify": "^5.12.3",
+    "mailparser": "^3.9.24",
+    "nodemailer": "^10.0.3",
+    "smtp-server": "^3.19.10"
+  },
+  "devDependencies": {
+    "@tiptap/pm": "^3.31.3",
+    "@tiptap/react": "^3.31.3",
+    "@tiptap/starter-kit": "^3.31.3",
+    "@types/mailparser": "^3.4.6",
+    "@types/node": "^22.20.2",
+    "@types/nodemailer": "^8.0.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "concurrently": "^10.0.5",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.0"
+  }
+}
