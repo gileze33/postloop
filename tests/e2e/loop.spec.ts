@@ -19,13 +19,16 @@ test.beforeEach(async ({ request }) => {
 });
 
 test("the full loop: the app sends in, you reply in the UI, the app gets the reply back", async ({ page, request }) => {
+    const stamp = Date.now();
     const sender = "alice@example.test";
     const inbox = "support@your-app.test";
-    const subject = `Widget broken ${Date.now()}`;
+    const subject = `Widget broken ${stamp}`;
+    const knownMessageId = `<thread-${stamp}@demo.test>`;
 
-    // 1. The app under test sends a message into Postloop's SMTP sink.
+    // 1. The app under test sends a message into Postloop's SMTP sink, with a known Message-ID so we can
+    //    assert the reply threads onto exactly it.
     const sendRes = await request.post(`${DEMO_APP_URL}/send`, {
-        data: { from: `"Alice" <${sender}>`, to: inbox, subject, html: "<p>My widget is broken.</p>" },
+        data: { from: `"Alice" <${sender}>`, to: inbox, subject, html: "<p>My widget is broken.</p>", messageId: knownMessageId },
     });
     expect(sendRes.ok()).toBeTruthy();
 
@@ -40,6 +43,18 @@ test("the full loop: the app sends in, you reply in the UI, the app gets the rep
     await page.locator(".pane.messages .row", { hasText: subject }).click();
     await expect(page.locator(".pane.reader .subject")).toHaveText(subject);
     await expect(page.locator(".pane.reader .body")).toContainText("My widget is broken");
+
+    // The caught message's Message-ID as Postloop parsed it; the reply must chain onto exactly this.
+    const messages = (await (await request.get(`/api/inboxes/${encodeURIComponent(inbox)}/messages`)).json()) as {
+        id: string;
+        subject: string;
+    }[];
+    const caughtSummary = messages.find(item => item.subject === subject);
+    const detail = (await (
+        await request.get(`/api/inboxes/${encodeURIComponent(inbox)}/messages/${encodeURIComponent(caughtSummary!.id)}`)
+    ).json()) as { messageId?: string };
+    const caughtId = detail.messageId;
+    expect(caughtId, "the sink should preserve the sender's Message-ID").toContain(`thread-${stamp}`);
 
     // 3. Reply through the real editor.
     const editor = page.locator(".reply .ProseMirror");
@@ -57,7 +72,8 @@ test("the full loop: the app sends in, you reply in the UI, the app gets the rep
     const reply = (await received(request)).find(item => item.subject === `Re: ${subject}`);
     expect(reply?.from).toBe(inbox);
     expect(reply?.to).toContain(sender);
-    expect(reply?.inReplyTo, "the reply should carry In-Reply-To").toBeTruthy();
+    expect(reply?.inReplyTo, "In-Reply-To should equal the original Message-ID").toBe(caughtId);
+    expect(reply?.references, "References should include the original Message-ID").toContain(caughtId);
     expect(reply?.html).toContain("off and on again");
 });
 

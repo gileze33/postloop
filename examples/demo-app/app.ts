@@ -169,12 +169,14 @@ const server = createServer(async (req, res) => {
                 to?: string;
                 subject?: string;
                 html?: string;
+                messageId?: string;
             };
             const message = {
                 from: payload.from ?? '"Demo Sender" <sender@example.test>',
                 to: payload.to ?? "demo@your-app.test",
                 subject: payload.subject ?? "Hello from the demo app",
                 html: payload.html ?? "<p>Sent over SMTP by the demo app.</p>",
+                ...(payload.messageId ? { messageId: payload.messageId } : {}),
             };
             await transport.sendMail(message);
             sent.unshift({ sentAt: new Date().toISOString(), from: message.from, to: message.to, subject: message.subject });
