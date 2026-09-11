@@ -1,5 +1,7 @@
 # Postloop
 
+[![npm version](https://img.shields.io/npm/v/postloop.svg)](https://www.npmjs.com/package/postloop)
+
 A local two-way mail dev tool. Postloop catches the email your app sends (over SMTP), shows it in a
 two-list-plus-reading-pane inbox, and lets you **reply back into your app** by
 POSTing the reply to an inbound endpoint you configure. It closes the loop: your app emails someone, you
@@ -7,7 +9,7 @@ read it in Postloop, you reply as that someone, and the reply lands back in your
 
 Distributed as a single runnable package: `npx postloop`, no separate frontend and backend to deploy.
 
-![Postloop's inbox: caught mail on the left, a message open with a reply drafted above the quoted original](docs/screenshots/inbox.png)
+![Postloop's inbox: caught mail on the left, a message open with a reply drafted above the quoted original](https://raw.githubusercontent.com/gileze33/postloop/main/docs/screenshots/inbox.png)
 
 ## Run
 
@@ -47,7 +49,7 @@ an ingestion pipeline recovers the true sender and destination inbox. Pick one f
 dropdown, or set `DEFAULT_FORWARD_PROFILE` to pre-select it. Every profile sets `Delivered-To` to the
 target inbox so a header-based router can resolve it.
 
-![Composing a new message wrapped as a Google Groups distribution list](docs/screenshots/compose.png)
+![Composing a new message wrapped as a Google Groups distribution list](https://raw.githubusercontent.com/gileze33/postloop/main/docs/screenshots/compose.png)
 
 - **`plain`** — no wrapping; `From` is the original sender.
 - **`google-groups`** — list rewrite: `From` becomes `"'Name' via Group"`, the real sender moves to
