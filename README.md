@@ -7,6 +7,8 @@ read it in Postloop, you reply as that someone, and the reply lands back in your
 
 Distributed as a single runnable package: `npx postloop`, no separate frontend and backend to deploy.
 
+![Postloop's inbox: caught mail on the left, a message open with a reply drafted above the quoted original](docs/screenshots/inbox.png)
+
 ## Run
 
 ```bash
@@ -45,6 +47,8 @@ an ingestion pipeline recovers the true sender and destination inbox. Pick one f
 dropdown, or set `DEFAULT_FORWARD_PROFILE` to pre-select it. Every profile sets `Delivered-To` to the
 target inbox so a header-based router can resolve it.
 
+![Composing a new message wrapped as a Google Groups distribution list](docs/screenshots/compose.png)
+
 - **`plain`** — no wrapping; `From` is the original sender.
 - **`google-groups`** — list rewrite: `From` becomes `"'Name' via Group"`, the real sender moves to
   `X-Original-From` / `X-Original-Sender` / `Reply-To`, and `List-Id` / `Precedence: list` /
@@ -53,10 +57,6 @@ target inbox so a header-based router can resolve it.
   in a `---------- Forwarded message ---------` body block. Needs the forwarder address.
 - **`outlook-forward`** — manual Outlook (new/OWA) forward: `From` is the forwarder, `Subject: FW:`, the
   original in a `divRplyFwdMsg` block with a `Sent:` date. Needs the forwarder address.
-
-The header shapes are drawn from RFCs, Google/Microsoft docs and real parser fixtures. Later profiles
-(Microsoft 365 distribution group / redirect, classic Outlook, the DMARC-not-rewritten Google Groups
-variant) are on the TODO list.
 
 ## Storage
 
@@ -75,12 +75,35 @@ pnpm start   # run the built server
 - `src/server` — Fastify (HTTP UI + JSON API), the SMTP sink, the filesystem store, and reply composition.
 - `src/web` — React UI (Vite): the two lists and the reading/reply pane.
 - `src/shared` — DTOs shared by both.
+- `tests/e2e` — Playwright end-to-end tests that drive the real UI.
+- `examples/demo-app` — a runnable stand-in for the app under test (sends mail in, receives replies back).
+
+## Testing
+
+End-to-end tests run in a real browser (Playwright) against the built UI, with a small
+[demo app](examples/demo-app) standing in for your application. The demo app sends a message into Postloop
+over SMTP; the test reads it and replies through the UI; it then asserts the reply arrives back at the demo
+app's inbound endpoint, correctly threaded.
+
+```bash
+pnpm exec playwright install chromium   # one-off: fetch the browser
+pnpm test                               # build, then run the E2E suite
+pnpm test:e2e                           # run against an existing build
+```
+
+The stack boots on its own ports (HTTP `8130`, SMTP `1130`, demo app `4130` by default, all
+env-overridable) so it never clashes with a Postloop instance running on the usual `8025`/`1025`. Caught
+mail goes to a throwaway, gitignored `.e2e-data/` directory, never your normal `./data`. CI runs the suite
+on every push and pull request (`.github/workflows/ci.yml`).
+
+The README screenshots are produced by the same suite from a seeded inbox; regenerate them with
+`POSTLOOP_CAPTURE=1 pnpm test:e2e`.
 
 ## TODO
 
 - **Raw source view** per message: show the raw `.eml` (headers and body) so you can see exactly what was sent or caught.
 - **Header panel**: surface `Message-ID`, `In-Reply-To`, `References` and `Date` on a message, to verify threading.
-- **More forward profiles**: Microsoft 365 distribution group / inbox-rule redirect (`Resent-*`, `X-MS-Exchange-*`, SRS `Return-Path`), classic Outlook for Windows (`-----Original Message-----` / Word HTML), and the DMARC-not-rewritten Google Groups variant. Ideally modelled from one captured sample each.
+- **More forward profiles**: Microsoft 365 distribution group / inbox-rule redirect (`Resent-*`, `X-MS-Exchange-*`, SRS `Return-Path`), classic Outlook for Windows (`-----Original Message-----` / Word HTML), and the DMARC-not-rewritten Google Groups variant.
 - **Custom headers in the composer**: set arbitrary ad-hoc headers, beyond the built-in forward profiles.
 - **Bcc and reply-all**, and a **plain-text alternative** part alongside the HTML (`multipart/alternative`).
 - **Housekeeping**: delete a message, clear an inbox.
@@ -89,6 +112,6 @@ pnpm start   # run the built server
 - **Canned scenarios** in the UI (new thread, reply, forward, distribution-list) for one-click test sends.
 - **Sanitise received HTML** before rendering it in the reading pane.
 - **Persist compose attachments** across reopens (currently only the text fields of the New-message draft persist).
-- Test coverage and a test framework (unit for the store/compose, an SMTP round-trip integration test).
+- Unit coverage for the store and compose/forwarding helpers (the Playwright E2E suite covers the full loop end to end; pure-function unit tests are still thin).
 - Live updates: replace the UI's polling with SSE or a websocket.
 - Optional Vite middleware mode for HMR in dev (currently `vite build --watch`).

@@ -22,7 +22,9 @@
     "build:server": "tsc -p tsconfig.server.json",
     "dev": "pnpm run build:web && concurrently -k -n web,server \"vite build --watch\" \"tsx watch src/server/index.ts\"",
     "start": "node dist/server/index.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.e2e.json --noEmit",
+    "test": "pnpm run build && playwright test",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@fastify/multipart": "^10.1.1",
@@ -34,6 +36,7 @@
     "smtp-server": "^3.19.10"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tiptap/pm": "^3.31.3",
     "@tiptap/react": "^3.31.3",
     "@tiptap/starter-kit": "^3.31.3",

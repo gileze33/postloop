@@ -3,3 +3,10 @@ dist/
 data/
 *.log
 .DS_Store
+
+# E2E: throwaway mail store and Playwright artifacts
+.e2e-data/
+test-results/
+playwright-report/
+blob-report/
+/playwright/.cache/
