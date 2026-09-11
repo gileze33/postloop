@@ -1,6 +1,6 @@
 {
   "name": "postloop",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "A local two-way mail dev tool: catches your app's outbound email over SMTP and lets you reply back into it.",
   "license": "MIT",
   "author": "Giles Williams",
