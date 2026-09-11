@@ -7,8 +7,6 @@ two-list-plus-reading-pane inbox, and lets you **reply back into your app** by
 POSTing the reply to an inbound endpoint you configure. It closes the loop: your app emails someone, you
 read it in Postloop, you reply as that someone, and the reply lands back in your app as inbound mail.
 
-Distributed as a single runnable package: `npx postloop`, no separate frontend and backend to deploy.
-
 ![Postloop's inbox: caught mail on the left, a message open with a reply drafted above the quoted original](https://raw.githubusercontent.com/gileze33/postloop/main/docs/screenshots/inbox.png)
 
 ## Run
