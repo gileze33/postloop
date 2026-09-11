@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import type { InboxSummary, MessageDetail, MessageSummary } from "../shared/types";
-import { attachmentUrl, fetchConfig, fetchInboxes, fetchMessage, fetchMessages, sendReply } from "./api";
+import {
+    attachmentUrl,
+    clearInbox,
+    deleteMessage,
+    fetchConfig,
+    fetchInboxes,
+    fetchMessage,
+    fetchMessages,
+    fetchRaw,
+    sendReply,
+} from "./api";
 import { AttachmentPicker } from "./components/AttachmentPicker";
 import { ComposeModal, type ComposeInitial } from "./components/ComposeModal";
 import { Editor } from "./components/Editor";
@@ -44,6 +54,8 @@ export const App = () => {
     const [repliesEnabled, setRepliesEnabled] = useState(true);
     const [defaultForwardProfile, setDefaultForwardProfile] = useState("plain");
     const [compose, setCompose] = useState<{ initial?: ComposeInitial; persist: boolean } | null>(null);
+    const [showRaw, setShowRaw] = useState(false);
+    const [rawSource, setRawSource] = useState("");
 
     const refreshInboxes = () => {
         fetchInboxes()
@@ -84,6 +96,8 @@ export const App = () => {
         setReplyHtml("");
         setReplyFiles([]);
         setStatus(null);
+        setShowRaw(false);
+        setRawSource("");
 
         if (!selectedInbox || !selectedId) {
             setMessage(null);
@@ -136,6 +150,52 @@ export const App = () => {
         refreshInboxes();
     };
 
+    const toggleRaw = async () => {
+        if (!showRaw && !rawSource && selectedInbox && selectedId) {
+            try {
+                setRawSource(await fetchRaw(selectedInbox, selectedId));
+            } catch {
+                setRawSource("(failed to load raw source)");
+            }
+        }
+
+        setShowRaw(value => !value);
+    };
+
+    const onDelete = async () => {
+        if (!selectedInbox || !selectedId) {
+            return;
+        }
+
+        try {
+            await deleteMessage(selectedInbox, selectedId);
+            setSelectedId(null);
+            setMessage(null);
+            fetchMessages(selectedInbox)
+                .then(setMessages)
+                .catch(() => setMessages([]));
+            refreshInboxes();
+        } catch {
+            // Deleting caught test mail is best-effort; ignore failures.
+        }
+    };
+
+    const onClearInbox = async () => {
+        if (!selectedInbox || !window.confirm(`Clear all messages in ${selectedInbox}?`)) {
+            return;
+        }
+
+        try {
+            await clearInbox(selectedInbox);
+            setSelectedInbox(null);
+            setSelectedId(null);
+            setMessages([]);
+            refreshInboxes();
+        } catch {
+            // Best-effort; ignore failures.
+        }
+    };
+
     return (
         <div className="app">
             <header className="topbar">
@@ -179,6 +239,14 @@ export const App = () => {
                 </section>
 
                 <section className="pane messages">
+                    {selectedInbox && (
+                        <div className="pane-head">
+                            <span className="pane-head-title">{selectedInbox}</span>
+                            <button type="button" className="reader-btn delete" onClick={onClearInbox}>
+                                Clear inbox
+                            </button>
+                        </div>
+                    )}
                     <ul className="list">
                         {messages.map(item => (
                             <li
@@ -207,6 +275,9 @@ export const App = () => {
                             <div className="reader-head">
                                 <h2 className="subject">{message.subject || "(no subject)"}</h2>
                                 <span className={`tag ${message.direction}`}>{directionLabel(message.direction)}</span>
+                                <button type="button" className="reader-btn" onClick={toggleRaw}>
+                                    {showRaw ? "Rendered" : "Raw source"}
+                                </button>
                                 <button
                                     type="button"
                                     className="forward-btn"
@@ -214,6 +285,9 @@ export const App = () => {
                                     onClick={() => setCompose({ initial: forwardInitial(message), persist: false })}
                                 >
                                     Forward
+                                </button>
+                                <button type="button" className="reader-btn delete" onClick={onDelete}>
+                                    Delete
                                 </button>
                             </div>
                             <div className="meta">
@@ -240,8 +314,12 @@ export const App = () => {
                                     ))}
                                 </div>
                             )}
-                            {/* TODO: sanitise received HTML before rendering (dev-only for now). */}
-                            <div className="body" dangerouslySetInnerHTML={{ __html: message.html }} />
+                            {showRaw ? (
+                                <pre className="raw-source">{rawSource}</pre>
+                            ) : (
+                                // Sanitised server-side at the DTO boundary; the raw view shows the original.
+                                <div className="body" dangerouslySetInnerHTML={{ __html: message.html }} />
+                            )}
 
                             <div className="reply">
                                 <h3>Reply as {selectedInbox}</h3>

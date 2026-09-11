@@ -101,16 +101,13 @@ The README screenshots are produced by the same suite from a seeded inbox; regen
 
 ## TODO
 
-- **Raw source view** per message: show the raw `.eml` (headers and body) so you can see exactly what was sent or caught.
 - **Header panel**: surface `Message-ID`, `In-Reply-To`, `References` and `Date` on a message, to verify threading.
 - **More forward profiles**: Microsoft 365 distribution group / inbox-rule redirect (`Resent-*`, `X-MS-Exchange-*`, SRS `Return-Path`), classic Outlook for Windows (`-----Original Message-----` / Word HTML), and the DMARC-not-rewritten Google Groups variant.
 - **Custom headers in the composer**: set arbitrary ad-hoc headers, beyond the built-in forward profiles.
 - **Bcc and reply-all**, and a **plain-text alternative** part alongside the HTML (`multipart/alternative`).
-- **Housekeeping**: delete a message, clear an inbox.
 - **Carry the original's attachments when forwarding** (forward currently quotes the body only).
 - **Search message subjects and bodies**, not just addresses.
 - **Canned scenarios** in the UI (new thread, reply, forward, distribution-list) for one-click test sends.
-- **Sanitise received HTML** before rendering it in the reading pane.
 - **Persist compose attachments** across reopens (currently only the text fields of the New-message draft persist).
 - Unit coverage for the store and compose/forwarding helpers (the Playwright E2E suite covers the full loop end to end; pure-function unit tests are still thin).
 - Live updates: replace the UI's polling with SSE or a websocket.

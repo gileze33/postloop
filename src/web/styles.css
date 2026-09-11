@@ -403,6 +403,64 @@ body {
     cursor: default;
 }
 
+.reader-btn {
+    font: inherit;
+    font-size: 12px;
+    padding: 5px 12px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--panel);
+    cursor: pointer;
+}
+
+.reader-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.reader-btn.delete {
+    color: #a5342f;
+    border-color: #e6cfce;
+}
+
+.pane-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px 8px 12px;
+    border-bottom: 1px solid var(--line);
+}
+
+.pane-head-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pane-head .reader-btn {
+    padding: 4px 10px;
+    flex-shrink: 0;
+}
+
+.raw-source {
+    margin: 16px 0;
+    padding: 12px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-height: 60vh;
+    overflow: auto;
+}
+
 .attachments {
     margin-top: 8px;
 }

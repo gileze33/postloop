@@ -3,6 +3,7 @@ import { join } from "path";
 import { simpleParser } from "mailparser";
 import type { InboxSummary, MessageDetail, MessageSummary } from "../shared/types";
 import { getConfig } from "./config";
+import { sanitiseEmailHtml } from "./sanitise";
 
 const safeSegment = (segment: string): string => {
     if (!segment || segment.includes("/") || segment.includes("\\") || segment.includes("..")) {
@@ -127,7 +128,7 @@ const toDetail = async (address: string, id: string): Promise<MessageDetail | nu
         receivedAt: stampToIso(id),
         snippet: (text ?? "").replace(/\s+/g, " ").trim().slice(0, 140),
         attachmentCount: attachments.length,
-        html: parsed.html || (text ? `<pre>${escapeHtml(text)}</pre>` : ""),
+        html: sanitiseEmailHtml(parsed.html || (text ? `<pre>${escapeHtml(text)}</pre>` : "")),
         text,
         messageId: parsed.messageId ?? undefined,
         references: parsed.references
@@ -188,4 +189,29 @@ export const readAttachment = async (
         contentType: attachment.contentType,
         content: attachment.content,
     };
+};
+
+/** The raw stored `.eml`, exactly as caught or sent; never sanitised. */
+export const readRaw = async (address: string, id: string): Promise<Buffer | null> => {
+    try {
+        return await fs.readFile(join(inboxDir(address), `${safeSegment(id)}.eml`));
+    } catch {
+        return null;
+    }
+};
+
+/** Delete a single stored message. Returns false if it wasn't there. */
+export const deleteMessage = async (address: string, id: string): Promise<boolean> => {
+    try {
+        await fs.unlink(join(inboxDir(address), `${safeSegment(id)}.eml`));
+
+        return true;
+    } catch {
+        return false;
+    }
+};
+
+/** Remove an inbox folder and everything in it. */
+export const clearInbox = async (address: string): Promise<void> => {
+    await fs.rm(inboxDir(address), { recursive: true, force: true });
 };
