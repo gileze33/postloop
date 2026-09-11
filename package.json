@@ -4,6 +4,10 @@
   "description": "A local two-way mail dev tool: catches your app's outbound email over SMTP and lets you reply back into it.",
   "license": "MIT",
   "author": "Giles Williams",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gileze33/postloop.git"
+  },
   "type": "commonjs",
   "packageManager": "pnpm@11.18.0",
   "bin": {
