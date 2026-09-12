@@ -5,7 +5,10 @@ import { DEMO_APP_PORT, DEMO_APP_URL, POSTLOOP_HTTP_PORT, POSTLOOP_SMTP_PORT, PO
 
 // The E2E store lives in a repo-local, gitignored directory (never the normal ./data), in a per-run
 // subdirectory so no earlier run's mail leaks in. Handed to global-teardown to remove.
-const DATA_DIR = join(process.cwd(), ".e2e-data", String(Date.now()));
+// One stable store directory for the whole run: the per-test wipe (tests/e2e/fixtures.ts) gives each test a
+// clean slate, and the fixed server ports already stop two runs overlapping, so there is no need to mint a
+// fresh per-run path. An env override wins (e.g. a CI runner); global-teardown removes whatever is used.
+const DATA_DIR = process.env.POSTLOOP_E2E_DATA_DIR ?? join(process.cwd(), ".e2e-data");
 mkdirSync(DATA_DIR, { recursive: true });
 process.env.POSTLOOP_E2E_DATA_DIR = DATA_DIR;
 

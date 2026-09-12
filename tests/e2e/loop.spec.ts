@@ -1,5 +1,6 @@
-import { expect, test, type APIRequestContext } from "@playwright/test";
+import type { APIRequestContext } from "@playwright/test";
 import { DEMO_APP_URL } from "./config";
+import { expect, test, uniqueAddress } from "./fixtures";
 
 interface ReceivedReply {
     from: string;
@@ -13,15 +14,10 @@ interface ReceivedReply {
 const received = async (request: APIRequestContext): Promise<ReceivedReply[]> =>
     (await request.get(`${DEMO_APP_URL}/outbound`)).json();
 
-test.beforeEach(async ({ request }) => {
-    // Each test starts from a clean demo app so assertions never see another test's traffic.
-    await request.post(`${DEMO_APP_URL}/reset`);
-});
-
 test("the full loop: the app sends in, you reply in the UI, the app gets the reply back", async ({ page, request }) => {
     const stamp = Date.now();
-    const sender = "alice@example.test";
-    const inbox = "support@your-app.test";
+    const sender = uniqueAddress("alice");
+    const inbox = uniqueAddress("support", "your-app.test");
     const subject = `Widget broken ${stamp}`;
     const knownMessageId = `<thread-${stamp}@demo.test>`;
 
@@ -58,7 +54,8 @@ test("the full loop: the app sends in, you reply in the UI, the app gets the rep
 
     // 3. Reply through the real editor.
     const editor = page.locator(".reply .ProseMirror");
-    await editor.click();
+    // Click the empty top paragraph (not the element centre, which can land in the quoted original).
+    await editor.click({ position: { x: 8, y: 8 } });
     await page.keyboard.type("Have you tried turning it off and on again?");
 
     await page.getByRole("button", { name: "Send reply" }).click();
@@ -79,6 +76,9 @@ test("the full loop: the app sends in, you reply in the UI, the app gets the rep
 
 test("compose a new message wrapped as a Google Group and confirm the rewrite arrives", async ({ page, request }) => {
     const subject = `Via the list ${Date.now()}`;
+    const sender = uniqueAddress("alice");
+    const inbox = uniqueAddress("inbox", "your-app.test");
+    const group = uniqueAddress("partners", "groups.example.test");
 
     // A forward profile adds fields that make the composer tall; a roomy viewport keeps the whole flow on
     // screen. Short-viewport scroll behaviour is guarded by its own test below.
@@ -89,11 +89,11 @@ test("compose a new message wrapped as a Google Group and confirm the rewrite ar
     const modal = page.locator(".modal");
     await expect(modal).toBeVisible();
 
-    await modal.locator('label:has-text("From (original sender)") input').fill('"Alice Sender" <alice@example.test>');
-    await modal.locator('label:has-text("To (delivered inbox)") input').fill("inbox@your-app.test");
+    await modal.locator('label:has-text("From (original sender)") input').fill(`"Alice Sender" <${sender}>`);
+    await modal.locator('label:has-text("To (delivered inbox)") input').fill(inbox);
     await modal.locator('label:has-text("Subject") input').fill(subject);
     await modal.locator('label:has-text("Forward style") select').selectOption("google-groups");
-    await modal.locator('label:has-text("Group address") input').fill("partners@groups.example.test");
+    await modal.locator('label:has-text("Group address") input').fill(group);
     await modal.locator('label:has-text("Group name") input').fill("Partner Integrations");
 
     const body = modal.locator(".ProseMirror");
@@ -108,7 +108,7 @@ test("compose a new message wrapped as a Google Group and confirm the rewrite ar
     await expect.poll(async () => (await received(request)).find(item => item.subject === subject) ?? null).not.toBeNull();
 
     const delivered = (await received(request)).find(item => item.subject === subject);
-    expect(delivered?.from).toBe("partners@groups.example.test");
+    expect(delivered?.from).toBe(group);
     expect(delivered?.html).toContain("distribution list");
 });
 

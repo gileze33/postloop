@@ -4,6 +4,7 @@ import fastifyMultipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import Fastify from "fastify";
 import { getConfig } from "./config";
+import { registerMcpRoute } from "./mcp";
 import { registerApiRoutes } from "./routes";
 import { startSmtpServer } from "./smtp";
 
@@ -25,6 +26,7 @@ const start = async (): Promise<void> => {
 
     await app.register(fastifyMultipart, { limits: { fileSize: 26214400, files: 20 } });
     registerApiRoutes(app);
+    registerMcpRoute(app);
 
     const webDir = resolveWebDir();
 
@@ -50,6 +52,7 @@ const start = async (): Promise<void> => {
     }
 
     app.log.info(`Storing mail under ${config.dataDir}`);
+    app.log.info(`MCP endpoint for AI agents at http://127.0.0.1:${config.port}/mcp`);
 };
 
 start().catch(err => {

@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
 import { DEMO_APP_URL } from "./config";
+import { expect, test } from "./fixtures";
 import { PRIMARY_INBOX, SEED_MESSAGES } from "./seed-data";
 
 // Not part of the functional suite: this seeds a lot of mail and writes the README screenshots, so it

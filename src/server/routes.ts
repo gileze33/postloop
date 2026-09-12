@@ -1,23 +1,14 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { forwardProfileById } from "../shared/forwardingProfiles";
-import type { ReplyResult } from "../shared/types";
 import type { ComposeAttachment } from "./compose";
-import { composeReply } from "./compose";
 import { getConfig } from "./config";
-import { buildForwarded } from "./forwarding";
 import {
-    clearInbox,
-    deleteMessage,
-    getMessage,
-    listInboxes,
-    listMessages,
-    readAttachment,
-    readRaw,
-    saveSentMessage,
-} from "./store";
-
-const REPLIES_DISABLED_MESSAGE =
-    "Replies are disabled. Set the OUTBOUND_URL environment variable to your app's inbound endpoint to enable them.";
+    ForwardBuildError,
+    MessageNotFoundError,
+    REPLIES_DISABLED_MESSAGE,
+    replyToMessage,
+    sendComposed,
+} from "./operations";
+import { clearInbox, deleteMessage, getMessage, listInboxes, listMessages, readAttachment, readRaw } from "./store";
 
 interface ParsedForm {
     fields: Record<string, string>;
@@ -41,25 +32,6 @@ const parseMultipart = async (request: FastifyRequest): Promise<ParsedForm> => {
     }
 
     return { fields, attachments };
-};
-
-const forwardToOutbound = async (outboundUrl: string, rawEml: Buffer): Promise<ReplyResult> => {
-    const res = await fetch(outboundUrl, {
-        method: "POST",
-        headers: { "content-type": "message/rfc822" },
-        body: rawEml,
-    });
-
-    const rawBody = await res.text();
-    let body: unknown = rawBody;
-
-    try {
-        body = JSON.parse(rawBody);
-    } catch {
-        // The endpoint may return plain text; keep the raw string.
-    }
-
-    return { status: res.status, body };
 };
 
 export const registerApiRoutes = (app: FastifyInstance): void => {
@@ -144,34 +116,31 @@ export const registerApiRoutes = (app: FastifyInstance): void => {
     app.post<{ Params: { address: string; id: string } }>(
         "/api/inboxes/:address/messages/:id/reply",
         async (request, reply) => {
-            const config = getConfig();
-
-            if (!config.outboundUrl) {
+            if (!getConfig().outboundUrl) {
                 return reply.code(409).send({ message: REPLIES_DISABLED_MESSAGE });
             }
 
             const address = decodeURIComponent(request.params.address);
-            const original = await getMessage(address, request.params.id);
-
-            if (!original) {
-                return reply.code(404).send({ message: "not found" });
-            }
-
             const { fields, attachments } = await parseMultipart(request);
-            const { rawEml } = await composeReply(original, address, fields.html ?? "", attachments);
-            const result = await forwardToOutbound(config.outboundUrl, rawEml);
-            await saveSentMessage(rawEml, address);
 
-            return reply.code(result.status).send(result);
+            try {
+                const result = await replyToMessage(address, request.params.id, fields.html ?? "", attachments);
+
+                return reply.code(result.status).send(result);
+            } catch (error) {
+                if (error instanceof MessageNotFoundError) {
+                    return reply.code(404).send({ message: "not found" });
+                }
+
+                throw error;
+            }
         },
     );
 
     // Start a brand-new conversation, or forward an existing one, optionally wrapped in a provider's
     // forwarding shape (the UI pre-fills the fields and picks a profile).
     app.post("/api/send", async (request, reply) => {
-        const config = getConfig();
-
-        if (!config.outboundUrl) {
+        if (!getConfig().outboundUrl) {
             return reply.code(409).send({ message: REPLIES_DISABLED_MESSAGE });
         }
 
@@ -183,28 +152,25 @@ export const registerApiRoutes = (app: FastifyInstance): void => {
             return reply.code(400).send({ message: "from and to are required" });
         }
 
-        const profileId =
-            fields.profile && forwardProfileById(fields.profile) ? fields.profile : config.defaultForwardProfile;
-
-        let rawEml: Buffer;
-
         try {
-            ({ rawEml } = await buildForwarded(profileId, {
-                originalSender: from,
-                inbox: to,
+            const result = await sendComposed({
+                from,
+                to,
                 cc: fields.cc?.trim() || undefined,
                 subject: fields.subject ?? "",
                 html: fields.html ?? "",
+                profile: fields.profile,
                 attachments,
                 params: fields,
-            }));
-        } catch (buildError) {
-            return reply.code(400).send({ message: (buildError as Error).message });
+            });
+
+            return reply.code(result.status).send(result);
+        } catch (error) {
+            if (error instanceof ForwardBuildError) {
+                return reply.code(400).send({ message: error.message });
+            }
+
+            throw error;
         }
-
-        const result = await forwardToOutbound(config.outboundUrl, rawEml);
-        await saveSentMessage(rawEml, from);
-
-        return reply.code(result.status).send(result);
     });
 };

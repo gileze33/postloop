@@ -1,5 +1,6 @@
-import { expect, test, type APIRequestContext } from "@playwright/test";
+import type { APIRequestContext } from "@playwright/test";
 import { DEMO_APP_URL } from "./config";
+import { expect, test, uniqueAddress } from "./fixtures";
 
 const enc = encodeURIComponent;
 
@@ -40,7 +41,7 @@ test("raw source view shows the untouched .eml", async ({ page, request }) => {
     const inbox = `raw-${stamp}@your-app.test`;
     const subject = `Raw ${stamp}`;
     await sendMail(request, {
-        from: "sender@example.test",
+        from: uniqueAddress("sender"),
         to: inbox,
         subject,
         html: "<p>Body here.</p>",
@@ -69,7 +70,7 @@ test("received HTML is sanitised for rendering while the stored source stays unt
     const inbox = `xss-${stamp}@your-app.test`;
     const subject = `XSS ${stamp}`;
     await sendMail(request, {
-        from: "attacker@example.test",
+        from: uniqueAddress("attacker"),
         to: inbox,
         subject,
         html: `<p>Hello there.</p><script>window.__pwned = 1;</script><a href="javascript:alert(1)">click</a>`,
@@ -92,8 +93,8 @@ test("deleting a message removes it and leaves the rest", async ({ page, request
     const inbox = `del-${stamp}@your-app.test`;
     const keep = `Keep ${stamp}`;
     const drop = `Drop ${stamp}`;
-    await sendMail(request, { from: "a@example.test", to: inbox, subject: keep, html: "<p>keep</p>" });
-    await sendMail(request, { from: "a@example.test", to: inbox, subject: drop, html: "<p>drop</p>" });
+    await sendMail(request, { from: uniqueAddress("a"), to: inbox, subject: keep, html: "<p>keep</p>" });
+    await sendMail(request, { from: uniqueAddress("a"), to: inbox, subject: drop, html: "<p>drop</p>" });
     const dropId = await waitForMessageId(request, inbox, drop);
     await waitForMessageId(request, inbox, keep);
 
@@ -114,8 +115,8 @@ test("deleting a message removes it and leaves the rest", async ({ page, request
 test("clearing an inbox empties it", async ({ page, request }) => {
     const stamp = Date.now();
     const inbox = `clear-${stamp}@your-app.test`;
-    await sendMail(request, { from: "a@example.test", to: inbox, subject: `One ${stamp}`, html: "<p>1</p>" });
-    await sendMail(request, { from: "a@example.test", to: inbox, subject: `Two ${stamp}`, html: "<p>2</p>" });
+    await sendMail(request, { from: uniqueAddress("a"), to: inbox, subject: `One ${stamp}`, html: "<p>1</p>" });
+    await sendMail(request, { from: uniqueAddress("a"), to: inbox, subject: `Two ${stamp}`, html: "<p>2</p>" });
     await waitForMessageId(request, inbox, `Two ${stamp}`);
 
     await page.goto("/");
