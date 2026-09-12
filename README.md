@@ -101,6 +101,7 @@ The README screenshots are produced by the same suite from a seeded inbox; regen
 
 ## TODO
 
+- **AI Agent integrations**: Add an MCP server or similar. Consider how this could be used if multiple copies of Postloop are being run for different worktrees.
 - **Header panel**: surface `Message-ID`, `In-Reply-To`, `References` and `Date` on a message, to verify threading.
 - **More forward profiles**: Microsoft 365 distribution group / inbox-rule redirect (`Resent-*`, `X-MS-Exchange-*`, SRS `Return-Path`), classic Outlook for Windows (`-----Original Message-----` / Word HTML), and the DMARC-not-rewritten Google Groups variant.
 - **Custom headers in the composer**: set arbitrary ad-hoc headers, beyond the built-in forward profiles.
