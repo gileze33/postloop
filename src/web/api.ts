@@ -43,6 +43,28 @@ export const fetchMessage = (address: string, id: string): Promise<MessageDetail
 export const attachmentUrl = (address: string, id: string, index: number): string =>
     `/api/inboxes/${encode(address)}/messages/${encode(id)}/attachments/${index}`;
 
+// Pull a stored attachment down as a File, so it can be re-attached to a forward (and shown, removable,
+// in the composer) and re-sent through the same multipart path as a hand-picked file.
+export const fetchAttachmentFile = async (
+    address: string,
+    id: string,
+    index: number,
+    filename: string,
+    contentType: string,
+): Promise<File> => {
+    const res = await fetch(attachmentUrl(address, id, index));
+
+    if (!res.ok) {
+        throw new Error(`${res.status} ${res.statusText}`);
+    }
+
+    const blob = await res.blob();
+
+    return new File([blob], filename || `attachment-${index + 1}`, {
+        type: contentType || blob.type || "application/octet-stream",
+    });
+};
+
 export const fetchRaw = (address: string, id: string): Promise<string> =>
     text(`/api/inboxes/${encode(address)}/messages/${encode(id)}/raw`);
 

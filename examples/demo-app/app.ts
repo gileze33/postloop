@@ -29,6 +29,14 @@ interface SentMessage {
     subject: string;
 }
 
+interface ReceivedAttachment {
+    filename: string;
+    contentType: string;
+    size: number;
+    /** utf-8 decoded content, for asserting on text attachments in the E2E suite. */
+    content: string;
+}
+
 interface ReceivedReply {
     receivedAt: string;
     from: string;
@@ -39,6 +47,7 @@ interface ReceivedReply {
     references?: string[];
     html: string;
     text: string;
+    attachments: ReceivedAttachment[];
 }
 
 const sent: SentMessage[] = [];
@@ -170,6 +179,7 @@ const server = createServer(async (req, res) => {
                 subject?: string;
                 html?: string;
                 messageId?: string;
+                attachments?: { filename: string; content: string; contentType?: string; encoding?: string }[];
             };
             const message = {
                 from: payload.from ?? '"Demo Sender" <sender@example.test>',
@@ -177,6 +187,7 @@ const server = createServer(async (req, res) => {
                 subject: payload.subject ?? "Hello from the demo app",
                 html: payload.html ?? "<p>Sent over SMTP by the demo app.</p>",
                 ...(payload.messageId ? { messageId: payload.messageId } : {}),
+                ...(payload.attachments && payload.attachments.length ? { attachments: payload.attachments } : {}),
             };
             await transport.sendMail(message);
             sent.unshift({ sentAt: new Date().toISOString(), from: message.from, to: message.to, subject: message.subject });
@@ -198,6 +209,12 @@ const server = createServer(async (req, res) => {
                 references: parsed.references ? (Array.isArray(parsed.references) ? parsed.references : [parsed.references]) : undefined,
                 html: typeof parsed.html === "string" ? parsed.html : "",
                 text: parsed.text ?? "",
+                attachments: parsed.attachments.map(attachment => ({
+                    filename: attachment.filename ?? "",
+                    contentType: attachment.contentType,
+                    size: attachment.size,
+                    content: attachment.content.toString("utf-8"),
+                })),
             });
             console.log(`[demo-app] received reply "${parsed.subject}" from Postloop`);
 
