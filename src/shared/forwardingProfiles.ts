@@ -29,7 +29,7 @@ export const FORWARD_PROFILES: ForwardProfileSpec[] = [
     },
     {
         id: "google-groups",
-        label: "Google Groups (distribution list)",
+        label: "Google Groups distribution list (automated)",
         category: "list-rewrite",
         description: "From is rewritten to \"'Name' via Group\"; the real sender is in X-Original-From / Reply-To; List-* headers added.",
         params: [
@@ -39,14 +39,14 @@ export const FORWARD_PROFILES: ForwardProfileSpec[] = [
     },
     {
         id: "gmail-forward",
-        label: "Gmail forward",
+        label: "Gmail forward (manual)",
         category: "body-forward",
         description: "Manual Gmail forward: From is the forwarder, the original is quoted in the body block.",
         params: [{ key: "forwarderAddress", label: "Forwarded by", placeholder: "fred@gmail.com", required: true }],
     },
     {
         id: "outlook-forward",
-        label: "Outlook forward (new / OWA)",
+        label: "Outlook forward, new / OWA (manual)",
         category: "body-forward",
         description: "Manual Outlook forward: From is the forwarder, the original is in a divRplyFwdMsg block.",
         params: [{ key: "forwarderAddress", label: "Forwarded by", placeholder: "fred@company.com", required: true }],

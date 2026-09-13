@@ -7,6 +7,7 @@ import { getConfig } from "./config";
 import { registerMcpRoute } from "./mcp";
 import { registerApiRoutes } from "./routes";
 import { startSmtpServer } from "./smtp";
+import { checkForUpdates } from "./update-check";
 
 const resolveWebDir = (): string | null => {
     const candidates = [
@@ -53,6 +54,8 @@ const start = async (): Promise<void> => {
 
     app.log.info(`Storing mail under ${config.dataDir}`);
     app.log.info(`MCP endpoint for AI agents at http://127.0.0.1:${config.port}/mcp`);
+
+    checkForUpdates();
 };
 
 start().catch(err => {

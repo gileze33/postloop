@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FORWARD_PROFILES, forwardProfileById } from "../../shared/forwardingProfiles";
 import { sendNew } from "../api";
 import { AttachmentPicker } from "./AttachmentPicker";
@@ -12,13 +12,22 @@ export interface ComposeInitial {
     html?: string;
 }
 
+interface SerialisedAttachment {
+    name: string;
+    type: string;
+    dataBase64: string;
+}
+
 interface ComposeDraft extends ComposeInitial {
     profile?: string;
     params?: Record<string, string>;
+    attachments?: SerialisedAttachment[];
 }
 
 interface ComposeModalProps {
     initial?: ComposeInitial;
+    /** Attachments to seed the composer with (e.g. the originals carried onto a forward); visible and removable. */
+    initialFiles?: File[];
     /** When true, seed from and persist every change to a local draft, so "New message" reopens ready to re-send. */
     persist?: boolean;
     defaultProfile: string;
@@ -39,13 +48,46 @@ const saveDraft = (draft: ComposeDraft): void => {
     try {
         localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     } catch {
-        // Ignore storage failures (private mode, quota); the draft is a convenience only.
+        // Attachments can blow the storage quota; keep the text draft rather than losing it wholesale.
+        try {
+            localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...draft, attachments: [] }));
+        } catch {
+            // Ignore storage failures (private mode, quota); the draft is a convenience only.
+        }
     }
 };
 
+// Chunked so a large attachment never blows the call stack via String.fromCharCode(...wholeArray).
+const bytesToBase64 = (bytes: Uint8Array): string => {
+    let binary = "";
+    const chunk = 0x8000;
+
+    for (let offset = 0; offset < bytes.length; offset += chunk) {
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + chunk));
+    }
+
+    return btoa(binary);
+};
+
+const base64ToBytes = (dataBase64: string): Uint8Array<ArrayBuffer> => {
+    const binary = atob(dataBase64);
+    const bytes = new Uint8Array(new ArrayBuffer(binary.length));
+
+    for (let index = 0; index < binary.length; index++) {
+        bytes[index] = binary.charCodeAt(index);
+    }
+
+    return bytes;
+};
+
+const filesFromDraft = (draft: ComposeDraft): File[] =>
+    (draft.attachments ?? []).map(
+        attachment => new File([base64ToBytes(attachment.dataBase64)], attachment.name, { type: attachment.type }),
+    );
+
 // Compose a from-scratch message, or (with `initial`) forward an existing one, optionally wrapped in a
 // provider's forwarding shape (Google Groups, Gmail, Outlook). From is always the true original sender.
-export const ComposeModal = ({ initial, persist = false, defaultProfile, onClose }: ComposeModalProps) => {
+export const ComposeModal = ({ initial, initialFiles, persist = false, defaultProfile, onClose }: ComposeModalProps) => {
     const [seed] = useState<ComposeDraft>(() => (initial ? { ...initial } : persist ? loadDraft() : {}));
     const [from, setFrom] = useState(seed.from ?? "");
     const [to, setTo] = useState(seed.to ?? "");
@@ -54,16 +96,48 @@ export const ComposeModal = ({ initial, persist = false, defaultProfile, onClose
     const [html, setHtml] = useState(seed.html ?? "");
     const [profile, setProfile] = useState(seed.profile ?? defaultProfile ?? "plain");
     const [params, setParams] = useState<Record<string, string>>(seed.params ?? {});
-    const [files, setFiles] = useState<File[]>([]);
+    const [files, setFiles] = useState<File[]>(() => initialFiles ?? (persist ? filesFromDraft(seed) : []));
     const [sending, setSending] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Attachments are per-session only (File objects don't serialise); the rest is the persisted draft.
+    // Cache base64 by File identity so a keystroke never re-encodes an unchanged attachment.
+    const serialCache = useRef(new Map<File, SerialisedAttachment>());
+    // Monotonic guard: only the most recently scheduled save wins, so out-of-order async writes (and the
+    // final write racing an unmount) can't persist a stale draft.
+    const saveSeq = useRef(0);
+
     useEffect(() => {
-        if (persist) {
-            saveDraft({ from, to, cc, subject, html, profile, params });
+        if (!persist) {
+            return;
         }
-    }, [persist, from, to, cc, subject, html, profile, params]);
+
+        const seq = ++saveSeq.current;
+
+        void (async () => {
+            const attachments = await Promise.all(
+                files.map(async file => {
+                    const cached = serialCache.current.get(file);
+
+                    if (cached) {
+                        return cached;
+                    }
+
+                    const serialised: SerialisedAttachment = {
+                        name: file.name,
+                        type: file.type,
+                        dataBase64: bytesToBase64(new Uint8Array(await file.arrayBuffer())),
+                    };
+                    serialCache.current.set(file, serialised);
+
+                    return serialised;
+                }),
+            );
+
+            if (seq === saveSeq.current) {
+                saveDraft({ from, to, cc, subject, html, profile, params, attachments });
+            }
+        })();
+    }, [persist, from, to, cc, subject, html, profile, params, files]);
 
     const spec = forwardProfileById(profile);
     const setParam = (key: string, value: string) => setParams(current => ({ ...current, [key]: value }));

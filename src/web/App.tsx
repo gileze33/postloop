@@ -4,6 +4,7 @@ import {
     attachmentUrl,
     clearInbox,
     deleteMessage,
+    fetchAttachmentFile,
     fetchConfig,
     fetchInboxes,
     fetchMessage,
@@ -53,7 +54,11 @@ export const App = () => {
     const [replyKey, setReplyKey] = useState(0);
     const [repliesEnabled, setRepliesEnabled] = useState(true);
     const [defaultForwardProfile, setDefaultForwardProfile] = useState("plain");
-    const [compose, setCompose] = useState<{ initial?: ComposeInitial; persist: boolean } | null>(null);
+    const [compose, setCompose] = useState<{
+        initial?: ComposeInitial;
+        initialFiles?: File[];
+        persist: boolean;
+    } | null>(null);
     const [showRaw, setShowRaw] = useState(false);
     const [rawSource, setRawSource] = useState("");
 
@@ -143,6 +148,21 @@ export const App = () => {
         } finally {
             setSending(false);
         }
+    };
+
+    // Carry the original's attachments onto the forward: pull each stored file down so it re-attaches (and
+    // shows, removable) in the composer. If a fetch fails, forward with whatever came back rather than block.
+    const onForward = async (original: MessageDetail) => {
+        const settled = await Promise.allSettled(
+            original.attachments.map((attachment, index) =>
+                fetchAttachmentFile(original.inbox, original.id, index, attachment.filename, attachment.contentType),
+            ),
+        );
+        const initialFiles = settled
+            .filter((result): result is PromiseFulfilledResult<File> => result.status === "fulfilled")
+            .map(result => result.value);
+
+        setCompose({ initial: forwardInitial(original), initialFiles, persist: false });
     };
 
     const closeCompose = () => {
@@ -282,7 +302,7 @@ export const App = () => {
                                     type="button"
                                     className="forward-btn"
                                     disabled={!repliesEnabled}
-                                    onClick={() => setCompose({ initial: forwardInitial(message), persist: false })}
+                                    onClick={() => void onForward(message)}
                                 >
                                     Forward
                                 </button>
@@ -348,6 +368,7 @@ export const App = () => {
             {compose !== null && (
                 <ComposeModal
                     initial={compose.initial}
+                    initialFiles={compose.initialFiles}
                     persist={compose.persist}
                     defaultProfile={defaultForwardProfile}
                     onClose={closeCompose}
