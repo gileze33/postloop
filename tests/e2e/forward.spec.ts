@@ -61,7 +61,7 @@ test("forwarding carries the original body underneath the intro", async ({ page,
     await expect(modal.locator(".ProseMirror")).toContainText(originalBody);
 
     await modal.locator('label:has-text("To (delivered inbox)") input').fill(target);
-    // Type the intro at the very top, above the carried original.
+    // Compose extra text above the seeded original: both must survive into the sent message.
     await modal.locator(".ProseMirror").click({ position: { x: 8, y: 8 } });
     await page.keyboard.type("Passing this along.");
 
@@ -73,7 +73,7 @@ test("forwarding carries the original body underneath the intro", async ({ page,
         .not.toBeNull();
 
     const forwarded = (await received(request)).find(reply => reply.subject === subject);
-    expect(forwarded?.html, "the intro rides on top").toContain("Passing this along.");
+    expect(forwarded?.html, "the composed text survives").toContain("Passing this along.");
     expect(forwarded?.html, "the original body is carried underneath").toContain(originalBody);
 });
 
